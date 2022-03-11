@@ -1,83 +1,33 @@
 package main
 
-import (
-	"runtime"
-	"sync"
-	"sync/atomic"
-)
-
-const DONE = "done"
-
-type bucket struct {
-	msg   string
-	value int64
-}
 type Channel struct {
 	counter int64
-	ch      chan *bucket
-	incDone chan interface{}
+	ch      chan int64
+	incDone chan int64
 }
 
 func NewChannel() *Channel {
 	c := &Channel{}
-	c.ch = make(chan *bucket)
-	c.incDone = make(chan interface{})
+	c.ch = make(chan int64)
+	c.incDone = make(chan int64)
+
+	go c.worker()
+
 	return c
 }
 func (s *Channel) Inc() {
-	s.ch <- &bucket{value: 1}
+	s.ch <- 1
 }
 
 func (s *Channel) Sum() int64 {
-	for val := range s.ch {
-		if val.msg == DONE {
-			return s.counter
-		}
-		s.counter += val.value
-	}
+	close(s.ch)
 
-	return s.counter
+	return <-s.incDone
 }
 
-func ChannelWorker(job Channel, n int) int64 {
-	go job.Sum()
-
-	var wgWorkers sync.WaitGroup
-	countWorkers := runtime.GOMAXPROCS(0)
-
-	var curWorkers int64
-	var cnt int64
-
-	for cnt < int64(n) {
-		if curWorkers >= int64(countWorkers) {
-			runtime.Gosched()
-		}
-
-		curWorkers++
-		cnt++
-		wgWorkers.Add(1)
-		go func() {
-			defer func() {
-				wgWorkers.Done()
-				atomic.AddInt64(&curWorkers, -1)
-
-			}()
-			job.Inc()
-		}()
+func (s *Channel) worker() {
+	for val := range s.ch {
+		s.counter += val
 	}
-
-	//var wg sync.WaitGroup
-	//wg.Add(n)
-	//for i := 0; i < n; i++ {
-	//	go func() {
-	//		defer wg.Done()
-	//		job.Inc()
-	//	}()
-	//}
-	//wg.Wait()
-	//fmt.Println(runtime.NumGoroutine())
-
-	wgWorkers.Wait()
-	job.ch <- &bucket{msg: DONE}
-	return job.counter
+	s.incDone <- s.counter
 }
