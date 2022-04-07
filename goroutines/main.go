@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"workerpool/pkg"
+	"workerpool/workerpool"
 )
 
 func main() {
