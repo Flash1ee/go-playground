@@ -24,10 +24,6 @@ func NewPoolAtomic(limit int) *WorkerPoolAtomic {
 	}
 }
 
-func (wp *WorkerPoolAtomic) GetNumInProgress() int32 {
-	return atomic.LoadInt32(&wp.countWorkers)
-}
-
 func (wp *WorkerPoolAtomic) Stop() []Result {
 	for wp.countWorkers != 0 {
 		runtime.Gosched()
@@ -48,25 +44,27 @@ func (wp *WorkerPoolAtomic) Run(tasks []Task) {
 		wp.run(task)
 	}
 }
+func (wp *WorkerPoolAtomic) GetNumInProgress() int32 {
+	return atomic.LoadInt32(&wp.countWorkers)
+}
 
 func (wp *WorkerPoolAtomic) run(task Task) {
 	for {
-		if wp.GetNumInProgress() < int32(wp.limit) {
-			atomic.AddInt32(&wp.countWorkers, 1)
-
-			go func(t Task) {
-				defer func() {
-					atomic.AddInt32(&wp.countWorkers, -1)
-				}()
-
-				task.Work(wp.resChan)
-			}(task)
-			break
+		if atomic.CompareAndSwapInt32(&wp.countWorkers, int32(wp.limit), wp.countWorkers) {
+			runtime.Gosched()
 		}
-		runtime.Gosched()
-	}
+		atomic.AddInt32(&wp.countWorkers, 1)
+		go func(t Task) {
+			defer func() {
+				atomic.AddInt32(&wp.countWorkers, -1)
+			}()
 
+			task.Work(wp.resChan)
+		}(task)
+		break
+	}
 }
+
 func (wp *WorkerPoolAtomic) Aggregate() {
 	for value := range wp.resChan {
 		wp.result = append(wp.result, value)
