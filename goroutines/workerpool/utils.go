@@ -25,7 +25,11 @@ type Result struct {
 }
 
 func (s Site) Work(dst chan<- Result) {
-	res, err := http.Get(s.URL)
+	client := http.Client{
+		Timeout: timeoutTime,
+	}
+
+	res, err := client.Get(s.URL)
 	if err != nil {
 		log.Println(err.Error())
 		return

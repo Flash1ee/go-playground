@@ -1,53 +1,71 @@
 package workerpool
 
 import (
+	"runtime"
 	"sync"
 )
 
-type WorkerSyncPool struct {
-	tasks  []Task
-	result []Result
+type WorkerPoolSync struct {
+	result  []Result
+	resChan chan Result
 
-	resChan       chan Result
-	aggregateDone chan struct{}
-	maxWorkers    int
-	wgWorkers     sync.WaitGroup
-	wgAggregate   sync.WaitGroup
+	wgAggregate sync.WaitGroup
+	wgWorkers   sync.WaitGroup
+	limit       int
 }
 
-func NewSyncPool(tasks []Task, maxWorkers int) *WorkerSyncPool {
-	return &WorkerSyncPool{
-		tasks:      tasks,
-		maxWorkers: maxWorkers,
-		resChan:    make(chan Result),
+func NewPoolSync(limit int) *WorkerPoolSync {
+	if limit <= 0 {
+		limit = DefaultLimit
+	}
+	return &WorkerPoolSync{
+		limit:   limit,
+		resChan: make(chan Result),
 	}
 }
-func (wp *WorkerSyncPool) Stop() []Result {
+
+func (wp *WorkerPoolSync) GetNumInProgress() int32 {
+	return int32(runtime.NumGoroutine() - 2)
+}
+
+func (wp *WorkerPoolSync) Stop() []Result {
 	wp.wgWorkers.Wait()
+
 	close(wp.resChan)
+
 	wp.wgAggregate.Wait()
 
 	return wp.result
-
 }
 
-func (wp *WorkerSyncPool) Run() {
-	dataChan := make(chan Task)
-
+func (wp *WorkerPoolSync) Run(tasks []Task) {
 	go wp.Aggregate()
-
-	for i := 0; i < wp.maxWorkers; i++ {
-		wrk := NewWorker(wp.resChan)
-		wrk.Start(dataChan, &wp.wgWorkers)
+	for _, task := range tasks {
+		wp.run(task)
 	}
-
-	for _, val := range wp.tasks {
-		dataChan <- val
-	}
-	close(dataChan)
 }
-func (wp *WorkerSyncPool) Aggregate() {
+
+func (wp *WorkerPoolSync) run(task Task) {
+	for {
+		if wp.GetNumInProgress() < int32(wp.limit) {
+			wp.wgWorkers.Add(1)
+
+			go func(t Task) {
+				defer func() {
+					wp.wgWorkers.Done()
+				}()
+
+				task.Work(wp.resChan)
+			}(task)
+			break
+		}
+		runtime.Gosched()
+	}
+
+}
+func (wp *WorkerPoolSync) Aggregate() {
 	wp.wgAggregate.Add(1)
+
 	for value := range wp.resChan {
 		wp.result = append(wp.result, value)
 	}

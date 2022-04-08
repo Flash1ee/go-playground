@@ -51,8 +51,8 @@ func (wp *WorkerPoolChannel) Run(tasks []Task) (int, error) {
 	go wp.aggregate()
 
 	for _, task := range tasks {
-		ID, err := wp.run(task)
-		log.Printf("worker with ID = %v completed\n", ID)
+		_, err := wp.run(task)
+		//log.Printf("worker with ID = %v completed\n", ID)
 		if err != nil {
 			wp.Stop()
 			return -1, err
@@ -87,7 +87,7 @@ func (wp *WorkerPoolChannel) aggregate() {
 }
 func (wp *WorkerPoolChannel) aggregateDone() {
 	close(wp.resChan)
-	if !wp.resDone {
+	for !wp.resDone {
 		runtime.Gosched()
 	}
 }

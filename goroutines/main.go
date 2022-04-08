@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"workerpool/workerpool"
@@ -11,7 +10,7 @@ import (
 func main() {
 	tasks := []workerpool.Task{
 		workerpool.Site{URL: "https://www.google.com"},
-		workerpool.Site{URL: "https://facebook.com"},
+		workerpool.Site{URL: "https://avito.ru"},
 		workerpool.Site{URL: "https://www.yandex.ru"},
 		workerpool.Site{URL: "https://www.mail.ru"},
 	}
@@ -19,21 +18,10 @@ func main() {
 		tasks = append(tasks, tasks...)
 	}
 
-	//wp := workerpool.NewSyncPool(tasks, workerpool.MaxGoroutines)
-	//wp.Run()
-
-	//wpAtomic := workerpool.NewPoolAtomic(tasks, workerpool.MaxGoroutines)
-	//wpAtomic.Run()
-
 	fmt.Println("Count tasks ", len(tasks))
-
-	//res := wpAtomic.Stop()
-	//res := wp.Stop()
-	wp := workerpool.NewPoolChannel(128)
 	start := time.Now()
-	if _, err := wp.Run(tasks); err != nil {
-		log.Fatalln(err)
-	}
+	wp := workerpool.NewPoolAtomic(128)
+	wp.Run(tasks)
 	res := wp.Stop()
 
 	fmt.Println("Count processing tasks ", len(res))

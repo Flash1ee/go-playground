@@ -2,52 +2,70 @@ package workerpool
 
 import (
 	"runtime"
+	"sync/atomic"
 )
 
 type WorkerPoolAtomic struct {
-	tasks  []Task
-	result []Result
+	result  []Result
+	resChan chan Result
 
-	resChan       chan Result
 	aggregateDone bool
-	maxWorkers    int
-	countWorkers  int64
+	countWorkers  int32
+	limit         int
 }
 
-func NewPoolAtomic(tasks []Task, maxWorkers int) *WorkerPoolAtomic {
+func NewPoolAtomic(limit int) *WorkerPoolAtomic {
+	if limit <= 0 {
+		limit = DefaultLimit
+	}
 	return &WorkerPoolAtomic{
-		tasks:      tasks,
-		maxWorkers: maxWorkers,
-		resChan:    make(chan Result),
+		limit:   limit,
+		resChan: make(chan Result),
 	}
 }
+
+func (wp *WorkerPoolAtomic) GetNumInProgress() int32 {
+	return atomic.LoadInt32(&wp.countWorkers)
+}
+
 func (wp *WorkerPoolAtomic) Stop() []Result {
-	if wp.countWorkers != 0 {
+	for wp.countWorkers != 0 {
 		runtime.Gosched()
 	}
+
 	close(wp.resChan)
-	if wp.aggregateDone != true {
+
+	for wp.aggregateDone != true {
 		runtime.Gosched()
 	}
 
 	return wp.result
-
 }
 
-func (wp *WorkerPoolAtomic) Run() {
-	dataChan := make(chan Task)
-
+func (wp *WorkerPoolAtomic) Run(tasks []Task) {
 	go wp.Aggregate()
+	for _, task := range tasks {
+		wp.run(task)
+	}
+}
 
-	for i := 0; i < wp.maxWorkers; i++ {
-		wrk := NewWorker(wp.resChan)
-		wrk.Start(dataChan, nil)
+func (wp *WorkerPoolAtomic) run(task Task) {
+	for {
+		if wp.GetNumInProgress() < int32(wp.limit) {
+			atomic.AddInt32(&wp.countWorkers, 1)
+
+			go func(t Task) {
+				defer func() {
+					atomic.AddInt32(&wp.countWorkers, -1)
+				}()
+
+				task.Work(wp.resChan)
+			}(task)
+			break
+		}
+		runtime.Gosched()
 	}
 
-	for _, val := range wp.tasks {
-		dataChan <- val
-	}
-	close(dataChan)
 }
 func (wp *WorkerPoolAtomic) Aggregate() {
 	for value := range wp.resChan {
