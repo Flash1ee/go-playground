@@ -1,0 +1,13 @@
+FROM golang:1.18 as building
+
+WORKDIR /app
+
+COPY hello.go .
+
+RUN go build -o hello hello.go
+
+FROM scratch
+
+COPY --from=building /app/hello .
+
+CMD ["./hello"]
