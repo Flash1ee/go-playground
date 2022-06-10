@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -40,6 +41,7 @@ func getCounter(w http.ResponseWriter, _ *http.Request) {
 }
 
 func main() {
+	time.Sleep(time.Second * 5)
 	cfg := &Config{}
 	if _, err := toml.DecodeFile("config.toml", cfg); err != nil {
 		log.Fatal(err)

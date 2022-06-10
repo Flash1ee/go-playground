@@ -1,4 +1,4 @@
-version: "3"
+version: "3.9"
 
 services:
   server:
@@ -9,7 +9,15 @@ services:
       - './config.toml:/app/config.toml'
     ports:
       - "8088:8088"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "server:8088/hello" ]
+      interval: 10s
+      timeout: 2s
+      retries: 3
   simple-curl:
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      server:
+        condition: service_healthy
