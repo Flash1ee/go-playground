@@ -3,10 +3,10 @@ FROM golang:1.18
 WORKDIR /app
 
 COPY server.go .
+
 COPY go.mod .
+
 COPY go.sum .
-
-
 
 RUN go build -o a.out server.go
 
