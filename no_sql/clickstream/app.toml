@@ -1,0 +1,5 @@
+log_level = "debug"
+log_path = "./logs/"
+domain = "localhost"
+bind_addr = ":80"
+mongo_url = "your mongo url"

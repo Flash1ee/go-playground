@@ -1,0 +1,38 @@
+version: '3.5'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    expose:
+      - "80"
+    ports:
+      - "81:80"
+    volumes:
+      - ./app.toml:/app/app.toml
+      - ${CONFIG_DIR}:/app/configs
+    depends_on:
+      - mongodb
+  mongodb:
+    image: "mongo:4.4.15"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_DB_NAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_DB_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_DB_NAME}
+    ports:
+      - '27100:27017'
+    volumes:
+      - "mongodata:/data/db"
+      - "./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js"
+      - ${CONFIG_DIR}:/app/configs
+    healthcheck:
+      test: "echo 'db.runCommand(\"ping\").ok'"
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+
+
+volumes:
+  mongodata:

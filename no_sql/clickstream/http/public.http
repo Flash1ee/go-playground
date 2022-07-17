@@ -1,0 +1,17 @@
+### Send event
+POST {{clickstream}}/event/send
+Content-Type: application/json
+
+{
+  "origin": "https://avito.ru",
+  "ipv4": "127.0.0.1",
+  "agent": 1420460528,
+  "session": "sdfdfwdf33451345345",
+  "referrer": "https://google.com/?text=some",
+  "country": "RU",
+  "lang": "en"
+}
+
+### Get event by id
+GET {{clickstream}}/event/{{eventID}}
+Content-Type: application/json
