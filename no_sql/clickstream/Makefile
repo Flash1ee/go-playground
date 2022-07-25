@@ -7,7 +7,7 @@ build-docker-server:
 run-compose:
 	docker-compose --env-file ./config/credintials.env up
 pause:
-	docker-compose down
+	docker-compose stop
 
 stop: # с удалением volumes!
-	docket-compose stop
+	docket-compose down

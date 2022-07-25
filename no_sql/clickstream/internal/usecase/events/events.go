@@ -20,10 +20,11 @@ func (u *EventsUsecase) CreateEvent(ctx context.Context, data *Event) (int64, er
 	return res, err
 }
 
-func (u *EventsUsecase) GetEvent(ctx context.Context, eventID int64) (interface{}, error) {
+func (u *EventsUsecase) GetEvent(ctx context.Context, eventID int64) (*Event, error) {
 	res, err := u.repository.GetEvent(ctx, eventID)
 	if err != nil {
 		return nil, err
 	}
-	return res, nil
+
+	return &res[0], nil
 }

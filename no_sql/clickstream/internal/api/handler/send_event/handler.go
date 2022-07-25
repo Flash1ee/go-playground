@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 
 	"go-clickstream/internal/model/dto"
 	us "go-clickstream/internal/usecase/events"
@@ -27,10 +28,27 @@ func (h *Handler) Handle(ctx echo.Context) error {
 	if err := ctx.Bind(request); err != nil {
 		return err
 	}
+	userID := request.GetUserID()
+	if userID == dto.InvalidUserID {
+		return ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Message: "userID is invalid, valid only int64 > 0",
+		})
+	}
+
+	if userID == dto.NotFoundUserID {
+		return ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Message: "userID not found in request body",
+		})
+
+	}
+
+	fmt.Println(userID)
 	fillRequestParams(request, ctx.Request())
 
 	id, err := h.usecase.CreateEvent(context.Background(), &us.Event{Body: *request})
 	if err != nil {
+		log.Error(fmt.Errorf("CreateEvent error: %w", err))
+		// вернет   "message": "Internal Server Error"
 		return err
 	}
 

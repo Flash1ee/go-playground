@@ -3,6 +3,7 @@ POST {{clickstream}}/event/send
 Content-Type: application/json
 
 {
+  "userID": 2,
   "origin": "https://avito.ru",
   "ipv4": "127.0.0.1",
   "agent": 1420460528,

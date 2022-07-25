@@ -6,5 +6,5 @@ import (
 
 type repository interface {
 	CreateEvent(ctx context.Context, data *Event) (int64, error)
-	GetEvent(ctx context.Context, eventID int64) (interface{}, error)
+	GetEvent(ctx context.Context, eventID int64) ([]Event, error)
 }
