@@ -58,7 +58,7 @@ func (r *Repository) CreateEvent(ctx context.Context, data *events.Event) (int64
 		return 0, err
 	}
 	ev := imported(data)
-	ev.ID = int(cnt + 1)
+	ev.ID = cnt + 1
 
 	ev.CreatedAt = time.Now()
 
@@ -73,7 +73,7 @@ func (r *Repository) CreateEvent(ctx context.Context, data *events.Event) (int64
 		}
 		return 0, err
 	}
-	return int64(ev.ID), nil
+	return ev.ID, nil
 }
 
 // db.events.aggregate([

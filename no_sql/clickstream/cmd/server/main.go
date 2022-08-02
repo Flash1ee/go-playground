@@ -6,10 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-
 	"github.com/BurntSushi/toml"
+	"github.com/labstack/echo/v4"
 
 	"go-clickstream/internal/api/handler/get_event"
 	"go-clickstream/internal/api/handler/send_event"
@@ -45,8 +43,7 @@ func main() {
 			panic(err)
 		}
 	}()
-
-	err = conn.Ping(ctx, readpref.Primary())
+	err = conn.Ping(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

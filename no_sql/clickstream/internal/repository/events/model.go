@@ -10,10 +10,10 @@ import (
 
 type event struct {
 	id        string      `bson:"_id,omitempty"`
-	ID        int         `bson:"id"`
+	ID        int64       `bson:"id"`
 	Body      interface{} `bson:"event"`
 	CreatedAt time.Time   `bson:"created_at"`
-	User      interface{} `bson:"user"`
+	User      interface{} `bson:"user,omitempty"`
 }
 
 func imported(data *events.Event) *event {
