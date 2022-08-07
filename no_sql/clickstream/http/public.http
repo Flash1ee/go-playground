@@ -16,3 +16,11 @@ Content-Type: application/json
 ### Get event by id
 GET {{clickstream}}/event/{{eventID}}
 Content-Type: application/json
+
+### Upload event by userID
+POST {{clickstream}}/event/upload
+Content-Type: application/json
+
+{
+  "userID": 2
+}

@@ -28,3 +28,15 @@ func (u *EventsUsecase) GetEvent(ctx context.Context, eventID int64) (*Event, er
 
 	return &res[0], nil
 }
+
+func (u *EventsUsecase) UploadEvents(ctx context.Context, userID int64) ([]Event, error) {
+	if ok, err := u.repository.UserExist(ctx, userID); !ok {
+		return nil, err
+	}
+	res, err := u.repository.UploadEvents(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

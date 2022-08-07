@@ -2,8 +2,8 @@ log_level = "debug"
 log_path = "./logs/"
 domain = "localhost"
 bind_addr = ":80"
-mongo_url = "mongodb://flashie:project@mongodb:27100/clickstream?replicaSet=rs0&directConnection=true"
-#mongo_url = "mongodb://flashie:project@127.0.0.1:27100/clickstream?replicaSet=rs0"
+#mongo_url = "mongodb://flashie:project@mongodb:27100/clickstream?replicaSet=rs0&directConnection=true"
+mongo_url = "mongodb://127.0.0.1:27117/clickstream"
 
 # Работает, НО если упадет 1 реплика, к 2 не подключиться
 #mongo_url = "mongodb://flashie:project@localhost:27100/clickstream?replicaSet=rs0&directConnection=true"

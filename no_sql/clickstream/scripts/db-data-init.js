@@ -1,3 +1,5 @@
+use clickstream
+
 db.events.insertOne({myfield: 'hello', thatfield: 'testing'})
 
 // Выдача информации о пользователе по userID.

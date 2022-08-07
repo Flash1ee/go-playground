@@ -13,58 +13,113 @@ services:
       - ./app.toml:/app/app.toml
       - ${CONFIG_DIR}:/app/configs
     depends_on:
-      - mongodb
+      - mongo-router01
     networks:
       - mongo-network
-  mongodb:
-    container_name: mongodb
+  mongo-router01:
+    container_name: mongo-router01
     image: "mongo:4.4.2"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_DB_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_DB_PASSWORD}
-      - MONGO_INITDB_DATABASE=${MONGO_DB_NAME}
+    command: "mongos --port 27017 --configdb rs-config-server/mongo-cfg-server01:27017 --bind_ip_all"
     ports:
-      - '27100:27017'
+      - "27117:27017"
     volumes:
-      - "mongodata:/data/db"
-      - "./migrations:/migrations"
-      - "./rs-init.sh:/scripts/rs-init.sh"
-      - ${CONFIG_DIR}:/app/configs
-    healthcheck:
-      test: "echo 'db.runCommand(\"ping\").ok'"
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      - ./scripts:/scripts
     networks:
       - mongo-network
-    command: ["/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
-  mongodb2:
-    container_name: mongodb2
+  mongo-cfg-server01:
     image: "mongo:4.4.2"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_DB_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_DB_PASSWORD}
-      - MONGO_INITDB_DATABASE=${MONGO_DB_NAME}
+    container_name: mongo-cfg-server01
+    command: "mongod --port 27017 --configsvr --replSet rs-config-server"
     ports:
-      - '27101:27017'
+      - "27119:27017"
     volumes:
-      - "mongodata2:/data/db"
-      - "./migrations:/migrations"
-      - ${CONFIG_DIR}:/app/configs
-    healthcheck:
-      test: "echo 'db.runCommand(\"ping\").ok'"
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      - ./scripts:/scripts
     networks:
       - mongo-network
-    command: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+  mongodb-shard01:
+    image: "mongo:4.4.2"
+    container_name: mongo-shard-01
+    command: "mongod --port 27017 --shardsvr --replSet rs-shard-01"
+    volumes:
+      - "mongodata01:/data/db"
+      - ./scripts:/scripts
+    ports:
+      - "27122:27017"
+    networks:
+      - mongo-network
+  mongodb-shard02:
+    image: "mongo:4.4.2"
+    container_name: mongo-shard-02
+    command: "mongod --port 27017 --shardsvr --replSet rs-shard-01"
+    volumes:
+      - "mongodata02:/data/db"
+      - ./scripts:/scripts
+    ports:
+      - "27123:27017"
+    networks:
+      - mongo-network
+  mongodb-shard03:
+    image: "mongo:4.4.2"
+    container_name: mongo-shard-03
+    command: "mongod --port 27017 --shardsvr --replSet rs-shard-01"
+    volumes:
+      - "mongodata03:/data/db"
+      - ./scripts:/scripts
+    networks:
+      - mongo-network
+    ports:
+      - "27124:27017"
 
+#  mongodb:
+#    container_name: mongodb
+#    image: "mongo:4.4.2"
+#    environment:
+#      - MONGO_INITDB_ROOT_USERNAME=${MONGO_DB_USERNAME}
+#      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_DB_PASSWORD}
+#      - MONGO_INITDB_DATABASE=${MONGO_DB_NAME}
+#    ports:
+#      - '27100:27017'
+#    volumes:
+#      - "mongodata:/data/db"
+#      - "./migrations:/migrations"
+#      - "./rs-init.sh:/scripts/rs-init.sh"
+#      - ${CONFIG_DIR}:/app/configs
+#    healthcheck:
+#      test: "echo 'db.runCommand(\"ping\").ok'"
+#      interval: 5s
+#      timeout: 5s
+#      retries: 3
+#    networks:
+#      - mongo-network
+#    command: ["/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+#  mongodb2:
+#    container_name: mongodb2
+#    image: "mongo:4.4.2"
+#    environment:
+#      - MONGO_INITDB_ROOT_USERNAME=${MONGO_DB_USERNAME}
+#      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_DB_PASSWORD}
+#      - MONGO_INITDB_DATABASE=${MONGO_DB_NAME}
+#    ports:
+#      - '27101:27017'
+#    volumes:
+#      - "mongodata2:/data/db"
+#      - "./migrations:/migrations"
+#      - ${CONFIG_DIR}:/app/configs
+#    healthcheck:
+#      test: "echo 'db.runCommand(\"ping\").ok'"
+#      interval: 5s
+#      timeout: 5s
+#      retries: 3
+#    networks:
+#      - mongo-network
+#    command: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+#
 
 
 volumes:
-  mongodata:
-  mongodata2:
+  mongodata01:
+  mongodata02:
+  mongodata03:
 
 networks:
   mongo-network:

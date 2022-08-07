@@ -13,8 +13,28 @@ pause:
 stop: # с удалением volumes!
 	docket-compose down
 
-mongo-init:
-	docker exec mongodb /migrations/mongo-init.sh
+# После первого старта контейнера
+init-mongo-sh-config:
+	docker-compose exec mongo-cfg-server01 sh -c "mongo < ./scripts/init-configserver.js"
+	sleep 5
+	docker-compose exec mongodb-shard01 sh -c "mongo < ./scripts/init-shard01.js"
 
-mongo-rs:
-	docker exec mongodb /scripts/rs-init.sh
+# После запуска init-mongo-sh-config
+init-router:
+	docker-compose exec mongo-router01 sh -c "mongo < ./scripts/init-router.js"
+
+enable-sharding:
+	docker-compose exec mongo-router01 sh ./scripts/enableSharding.sh
+
+migrate-data:
+	docker-compose exec mongo-router01 sh -c "mongo < ./scripts/db-data-init.js"
+
+verify-router:
+	docker-compose exec mongo-router01 sh -c "echo 'sh.status()' | mongo"
+
+verify-sh-rs:
+	docker-compose exec mongodb-shard01 sh -c "echo 'rs.status()' | mongo"
+
+check-db-status:
+	docker-compose exec mongo-router01 sh -c "echo 'use clickstream\ndb.stats()\ndb.events.getShardDistribution()' | mongo"
+
