@@ -53,7 +53,7 @@ func main() {
 		log.Fatal("database clickstream not found")
 	}
 
-	eventsRepo := events2.NewRepository(conn, db, "events")
+	eventsRepo := events2.NewRepository(conn, db, "events", "users")
 	eventsUsecase := events.NewEventsUsecase(eventsRepo)
 	sendEventHandler := send_event.NewHandler(eventsUsecase)
 	getEventHandler := get_event.NewHandler(eventsUsecase)

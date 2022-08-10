@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/gommon/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
 
 	"go-clickstream/internal/usecase/events"
 )
@@ -22,16 +22,19 @@ var (
 )
 
 type Repository struct {
-	collection *mongo.Collection
-	client     *mongo.Client
+	eventsCollection *mongo.Collection
+	userCollection   *mongo.Collection
+	client           *mongo.Client
 }
 
-func NewRepository(c *mongo.Client, db *mongo.Database, collectionName string) *Repository {
-	collection := db.Collection(collectionName)
+func NewRepository(c *mongo.Client, db *mongo.Database, eventCollection string, userCollection string) *Repository {
+	evCollection := db.Collection(eventCollection)
+	usCollection := db.Collection(userCollection)
 
 	return &Repository{
-		collection: collection,
-		client:     c,
+		eventsCollection: evCollection,
+		userCollection:   usCollection,
+		client:           c,
 	}
 }
 func (r *Repository) count(ctx context.Context) (int64, error) {
@@ -42,7 +45,7 @@ func (r *Repository) count(ctx context.Context) (int64, error) {
 	var data []struct {
 		ID int64 `json:"id"`
 	}
-	cur, err := r.collection.Find(ctx, filter, opts)
+	cur, err := r.eventsCollection.Find(ctx, filter, opts)
 	if err != nil {
 		return 0, err
 	}
@@ -67,7 +70,7 @@ func (r *Repository) CreateEvent(ctx context.Context, data *events.Event) (int64
 
 	ev.CreatedAt = time.Now()
 
-	_, err = r.collection.InsertOne(ctx, ev)
+	_, err = r.eventsCollection.InsertOne(ctx, ev)
 	if err != nil {
 		we, ok := err.(mongo.WriteException)
 		if ok {
@@ -83,9 +86,9 @@ func (r *Repository) CreateEvent(ctx context.Context, data *events.Event) (int64
 
 func (r *Repository) UserExist(ctx context.Context, userID int64) (bool, error) {
 	filter := primitive.D{
-		{Key: "id", Value: primitive.D{{Key: "$eq", Value: userID}}},
+		{Key: "userID", Value: primitive.D{{Key: "$eq", Value: userID}}},
 	}
-	err := r.collection.FindOne(ctx, filter).Err()
+	err := r.userCollection.FindOne(ctx, filter).Err()
 	if err == nil {
 		return true, nil
 	}
@@ -121,7 +124,7 @@ func (r *Repository) GetEvent(ctx context.Context, eventID int64) ([]events.Even
 		{"foreignField", "userID"},
 		{"as", "user"}}}}
 	var res []event
-	cursor, err := r.collection.Aggregate(ctx, mongo.Pipeline{lookupStage, matchStage})
+	cursor, err := r.eventsCollection.Aggregate(ctx, mongo.Pipeline{lookupStage, matchStage})
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +180,7 @@ func (r *Repository) UploadEvents(ctx context.Context, userID int64) ([]events.E
 			return err
 		}
 
-		cur, err := r.collection.Find(sc, findFilter)
+		cur, err := r.eventsCollection.Find(sc, findFilter)
 		if err != nil {
 			_ = session.AbortTransaction(sc)
 			return err
@@ -190,7 +193,7 @@ func (r *Repository) UploadEvents(ctx context.Context, userID int64) ([]events.E
 				_ = session.AbortTransaction(sc)
 				return err
 			}
-			newID, err := uuid.New()
+			newID := uuid.New()
 			if err != nil {
 				_ = session.AbortTransaction(sc)
 				return err
@@ -218,7 +221,7 @@ func (r *Repository) UploadEvents(ctx context.Context, userID int64) ([]events.E
 				return fmt.Errorf("can not convert event body to map[string]interface{} in upd loop")
 			}
 			log.Info(ev.ObjectID.String())
-			result, err := r.collection.UpdateByID(
+			result, err := r.eventsCollection.UpdateByID(
 				sc, ev.ObjectID, bson.D{
 					{Key: "$set", Value: bson.D{
 						{"event.userID", body["userID"]}},

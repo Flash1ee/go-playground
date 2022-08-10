@@ -78,20 +78,39 @@ func main() {
 	if db == nil {
 		logger.Fatal("database clickstream not found")
 	}
+	usersEvents := db.Collection("events")
+	events := db.Collection("events")
 
-	condPipeline := getMatchConditions(*eventID, *userID)
+	usersCond := getMatchConditions()
+	eventsCond := getMatchConditions()
+
+	if *eventID != 0 {
+		eventsCond = append(eventsCond, getEventsCond(*eventID))
+	}
+
+	if *userID != 0 {
+		usersCond = append(usersCond, getUsersCond(*userID))
+	}
+
 	opts := options.ChangeStream().SetFullDocument(options.UpdateLookup)
-	stream, err := db.Watch(context.TODO(), condPipeline, opts)
+
+	usersStream, err := usersEvents.Watch(context.TODO(), usersCond, opts)
 	if err != nil {
 		panic(err)
 	}
 
-	waitGroup.Add(1)
+	eventsStream, err := events.Watch(context.Background(), eventsCond, opts)
+	if err != nil {
+		panic(err)
+	}
+
+	waitGroup.Add(2)
 
 	routineCtx, cancelFn := context.WithCancel(context.Background())
 	_ = cancelFn
 
-	go listenToDBChangeStream(logger, routineCtx, &waitGroup, stream)
+	go listenToDBChangeStream(logger, routineCtx, &waitGroup, usersStream)
+	go listenToDBChangeStream(logger, routineCtx, &waitGroup, eventsStream)
 
 	waitGroup.Wait()
 }
@@ -123,12 +142,25 @@ func listenToDBChangeStream(logger *logrus.Logger,
 				logger.Fatal(writeErr)
 			}
 			logger.Info(string(data))
-
 		}
 	}
 }
+func getUsersCond(userID int64) bson.D {
+	return bson.D{{Key: "$match", Value: bson.D{{
+		Key: "fullDocument.event.userID", Value: float64(userID),
+	},
+	}}}
+}
 
-func getMatchConditions(eventID int64, userID int64) mongo.Pipeline {
+func getEventsCond(eventID int64) bson.D {
+	return bson.D{{"$match", bson.D{
+		{
+			Key: "fullDocument.id", Value: eventID,
+		},
+	},
+	}}
+}
+func getMatchConditions() mongo.Pipeline {
 	matchOperationType := bson.D{{"$match", bson.D{
 		{
 			Key: "$or", Value: []bson.D{
@@ -139,24 +171,5 @@ func getMatchConditions(eventID int64, userID int64) mongo.Pipeline {
 			},
 		},
 	}}}
-
-	res := mongo.Pipeline{matchOperationType}
-
-	if userID != 0 {
-		res = append(res, bson.D{{"$match", bson.D{
-			{
-				Key: "fullDocument.event.userID", Value: userID,
-			},
-		},
-		}})
-	}
-	if eventID != 0 {
-		res = append(res, bson.D{{"$match", bson.D{
-			{
-				Key: "fullDocument.id", Value: eventID,
-			},
-		},
-		}})
-	}
-	return res
+	return mongo.Pipeline{matchOperationType}
 }
